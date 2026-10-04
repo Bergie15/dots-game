@@ -323,8 +323,11 @@
         { label: 'Undo', run: undo });
     } else {
       lines.push(`Short by ${goal - total()} points`);
-      showOverlay('Out of Moves', lines.join('\n'),
-        { label: 'Retry level', run: () => startLevel(level, totalBefore) },
+      lines.push(`You reached level ${level}`);
+      // losing sends you back to level 1 (undo can still rescue the board)
+      save(PROGRESS_KEY, JSON.stringify({ level: 1, totalBefore: 0 }));
+      showOverlay('Game Over', lines.join('\n'),
+        { label: 'Start over', run: () => startLevel(1, 0) },
         { label: 'Undo', run: undo });
     }
   }
@@ -358,7 +361,10 @@
     const prev = history.pop();
     cols = prev.cols;
     score = prev.score;
-    if (isLevels()) goalAnnounced = total() >= goalFor(level);
+    if (isLevels()) {
+      goalAnnounced = total() >= goalFor(level);
+      save(PROGRESS_KEY, JSON.stringify({ level, totalBefore }));
+    }
     hideOverlay();
     render();
     setInfo('Undid last move');

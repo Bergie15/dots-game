@@ -10,7 +10,7 @@ A browser remake of the classic Android *Bubble Breaker* game. Plain HTML/CSS/JS
 - Bubbles above a popped group fall down. When a column is emptied, the remaining columns slide over to close the gap.
 - **Classic** mode: the game ends when no groups of 2+ remain.
 - End-of-board bonus (both modes): +100 for every bubble under 20 left, or +2,500 for clearing the board.
-- **Levels** mode (10×10 board by default): your running total must reach a Fibonacci number of thousands — 1,000, 2,000, 3,000, 5,000, 8,000, 13,000… When you run out of moves, reaching the goal moves you on to the next level with a fresh board; otherwise you retry the level from your previous total. Progress is saved.
+- **Levels** mode (10×10 board by default): your running total must reach a Fibonacci number of thousands — 1,000, 2,000, 3,000, 5,000, 8,000, 13,000… When you run out of moves, reaching the goal moves you on to the next level with a fresh board; otherwise it's game over and you start again from level 1. Progress is saved.
 - **Settings** (gear icon) also lets you pick the bubble size: Small (14×16), Medium (12×14), Large (10×10) or Extra large (8×9). Each mode remembers its own size (Classic defaults to Medium, Levels to Large); level goals scale with the number of bubbles on the board.
 - **Undo** reverts your last move; your best score is saved in the browser.
 
