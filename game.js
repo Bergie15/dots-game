@@ -66,15 +66,11 @@
   // the k-th bubble in a group is worth 10k - 5 (5, 15, 25, ...), which sums to 5n²
   const points = n => 5 * n * n;
   // goals scale with how many bubbles fit on the board (medium = 168)
-  // Levels: the running total must reach a Fibonacci number of thousands
-  // (1k, 2k, 3k, 5k, 8k, ...), scaled to the board size (10x10 = 100 bubbles).
-  function goalFor(lvl) {
-    let a = 1, b = 2;
-    for (let n = 1; n < lvl; n++) [a, b] = [b, a + b];
-    return Math.round(a * 1000 * (COLS * ROWS) / 100 / 100) * 100;
-  }
-  // End-of-board bonus for leaving few bubbles behind.
-  const bonusFor = left => left === 0 ? 2500 : Math.max(0, 20 - left) * 100;
+  // Levels: the running total must reach 1,000, 3,000, 5,000, 7,000, ...
+  // (as in the original), scaled to the board size (10x10 = 100 bubbles).
+  const goalFor = lvl => Math.round((2000 * lvl - 1000) * (COLS * ROWS) / 100 / 100) * 100;
+  // End-of-board bonus: 2,000 for a clear, shrinking fast as more bubbles are left.
+  const bonusFor = left => left < 10 ? 2000 - 20 * left * left : 0;
   const DEFAULT_SIZE = { classic: 'medium', levels: 'large' };
   const isLevels = () => gameMode === 'levels';
   const total = () => totalBefore + score;
@@ -256,7 +252,7 @@
     setInfo(`${cells.length} bubbles = ${selection.points} points. Tap again to pop.`);
   }
 
-  const PRAISE = [[20, 'Amazing!'], [14, 'Excellent!'], [9, 'Great!'], [5, 'Good!']];
+  const PRAISE = [[14, 'Perfect!'], [10, 'Great!'], [5, 'Good!']];
 
   function showPraise(n) {
     const hit = PRAISE.find(([min]) => n >= min);
