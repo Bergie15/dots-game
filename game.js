@@ -5,27 +5,45 @@
   const ROWS = 14;
   const COLORS = 5;
   const BEST_KEY = 'bubbleBreaker.best';
-  const MODE_KEY = 'bubbleBreaker.tapMode';
+  const BEST_LEVELS_KEY = 'bubbleBreaker.bestLevels';
+  const PROGRESS_KEY = 'bubbleBreaker.levelProgress';
+  const TAP_KEY = 'bubbleBreaker.tapMode';
+  const GAME_MODE_KEY = 'bubbleBreaker.gameMode';
 
-  const boardEl = document.getElementById('board');
-  const scoreEl = document.getElementById('score');
-  const bestEl = document.getElementById('best');
-  const infoEl = document.getElementById('info');
-  const undoBtn = document.getElementById('undoBtn');
-  const modeBtn = document.getElementById('modeBtn');
-  const overlay = document.getElementById('overlay');
-  const overTitle = document.getElementById('overTitle');
-  const overText = document.getElementById('overText');
+  const $ = id => document.getElementById(id);
+  const boardEl = $('board');
+  const scoreEl = $('score');
+  const scoreLabel = $('scoreLabel');
+  const goalEl = $('goal');
+  const barEl = $('bar');
+  const totalEl = $('total');
+  const bestEl = $('best');
+  const infoEl = $('info');
+  const undoBtn = $('undoBtn');
+  const modeBtn = $('modeBtn');
+  const classicBtn = $('classicBtn');
+  const levelsBtn = $('levelsBtn');
+  const overlay = $('overlay');
+  const overTitle = $('overTitle');
+  const overText = $('overText');
+  const againBtn = $('againBtn');
+  const altBtn = $('altBtn');
 
   // cols[c] is a column stored bottom-up: cols[c][0] is the bottom bubble.
   let cols = [];
-  let score = 0;
-  let best = 0;
+  let score = 0;          // classic: game score; levels: this level's score
   let history = [];
-  let selection = null; // { key, cells: [{c,i}], points }
+  let selection = null;   // { ids, cells: [{c,i}], points }
   let busy = false;
   let nextId = 1;
   let twoTap = true;
+  let gameMode = 'classic';
+  let level = 1;
+  let totalBefore = 0;    // levels: total score banked before this level
+  let goalAnnounced = false;
+  let primaryAction = null;
+  let altAction = null;
+  const best = { classic: 0, levels: 0 };
   const elements = new Map(); // bubble id -> element
   let previewEl = null;
 
@@ -37,8 +55,11 @@
   }
 
   const points = n => n * (n - 1);
+  const goalFor = lvl => 300 + 200 * (lvl - 1);
+  const isLevels = () => gameMode === 'levels';
+  const total = () => totalBefore + score;
 
-  function newGame() {
+  function fillBoard() {
     cols = [];
     for (let c = 0; c < COLS; c++) {
       const col = [];
@@ -47,12 +68,48 @@
     }
     score = 0;
     history = [];
+    goalAnnounced = false;
     clearSelection();
-    overlay.classList.add('hidden');
+    hideOverlay();
     for (const el of elements.values()) el.remove();
     elements.clear();
     render();
+  }
+
+  function startClassic() {
+    fillBoard();
     setInfo('Tap a group of 2+ matching bubbles');
+  }
+
+  function startLevel(lvl, banked) {
+    level = lvl;
+    totalBefore = banked;
+    save(PROGRESS_KEY, JSON.stringify({ level, totalBefore }));
+    fillBoard();
+    setInfo(`Level ${level}: score ${goalFor(level)} points before you run out of moves`);
+  }
+
+  function newGame() {
+    if (isLevels()) startLevel(1, 0);
+    else startClassic();
+  }
+
+  function setGameMode(mode) {
+    gameMode = mode;
+    save(GAME_MODE_KEY, mode);
+    document.body.classList.toggle('levels', isLevels());
+    classicBtn.classList.toggle('active', !isLevels());
+    levelsBtn.classList.toggle('active', isLevels());
+    classicBtn.setAttribute('aria-selected', !isLevels());
+    levelsBtn.setAttribute('aria-selected', isLevels());
+    if (isLevels()) {
+      let saved = null;
+      try { saved = JSON.parse(load(PROGRESS_KEY, 'null')); } catch { /* ignore */ }
+      if (saved && saved.level > 0) startLevel(saved.level, saved.totalBefore || 0);
+      else startLevel(1, 0);
+    } else {
+      startClassic();
+    }
   }
 
   function snapshot() {
@@ -92,10 +149,6 @@
     return cols.reduce((n, col) => n + col.length, 0);
   }
 
-  function cellToPos(c, i) {
-    return { x: c * 100, y: (ROWS - 1 - i) * 100 };
-  }
-
   // Sync DOM elements to the current state; transitions animate falls and shifts.
   function render() {
     const live = new Set();
@@ -103,37 +156,55 @@
       col.forEach((b, i) => {
         live.add(b.id);
         let el = elements.get(b.id);
-        const { x, y } = cellToPos(c, i);
+        const pos = `translate(${c * 100}%, ${(ROWS - 1 - i) * 100}%)`;
         if (!el) {
           el = document.createElement('div');
           el.className = 'bubble c' + b.color;
           el.style.transition = 'none';
           elements.set(b.id, el);
           boardEl.appendChild(el);
-          el.style.transform = `translate(${x}%, ${y}%)`;
+          el.style.transform = pos;
           el.offsetWidth; // commit position before re-enabling transitions
           el.style.transition = '';
         }
         el.dataset.c = c;
         el.dataset.i = i;
-        el.style.transform = `translate(${x}%, ${y}%)`;
+        el.style.transform = pos;
       });
     });
     for (const [id, el] of elements) {
       if (!live.has(id)) { el.remove(); elements.delete(id); }
     }
-    scoreEl.textContent = score;
-    if (score > best) { best = score; save(BEST_KEY, best); }
-    bestEl.textContent = best;
+    renderStats();
     undoBtn.disabled = history.length === 0;
+  }
+
+  function renderStats() {
+    scoreEl.textContent = score;
+    const shown = isLevels() ? total() : score;
+    if (shown > best[gameMode]) {
+      best[gameMode] = shown;
+      save(isLevels() ? BEST_LEVELS_KEY : BEST_KEY, shown);
+    }
+    bestEl.textContent = best[gameMode];
+    if (isLevels()) {
+      const goal = goalFor(level);
+      scoreLabel.textContent = `Level ${level}`;
+      goalEl.textContent = ` / ${goal}`;
+      totalEl.textContent = total();
+      barEl.style.width = Math.min(100, score / goal * 100) + '%';
+      barEl.classList.toggle('done', score >= goal);
+    } else {
+      scoreLabel.textContent = 'Score';
+    }
   }
 
   function setInfo(text) { infoEl.textContent = text; }
 
   function clearSelection() {
     if (selection) {
-      for (const { c, i } of selection.cells) {
-        const el = elements.get(cols[c][i].id);
+      for (const id of selection.ids) {
+        const el = elements.get(id);
         if (el) el.classList.remove('selected');
       }
     }
@@ -142,7 +213,6 @@
   }
 
   function showFloat(cells, text, preview) {
-    // centre of the group's bounding box, in board percentages
     let sx = 0, sy = 0;
     for (const { c, i } of cells) { sx += c + 0.5; sy += ROWS - 1 - i + 0.5; }
     const el = document.createElement('div');
@@ -158,7 +228,7 @@
   function select(cells) {
     clearSelection();
     selection = { ids: new Set(cells.map(({ c, i }) => cols[c][i].id)), cells, points: points(cells.length) };
-    for (const { c, i } of cells) elements.get(cols[c][i].id).classList.add('selected');
+    for (const id of selection.ids) elements.get(id).classList.add('selected');
     previewEl = showFloat(cells, '+' + selection.points, true);
     setInfo(`${cells.length} bubbles = ${selection.points} points. Tap again to pop.`);
   }
@@ -174,8 +244,13 @@
     for (const id of doomed) elements.get(id).classList.add('popping');
     showFloat(cells, '+' + gained, false);
     score += gained;
-    scoreEl.textContent = score;
-    setInfo(`Popped ${cells.length} for ${gained} points`);
+    renderStats();
+    if (isLevels() && !goalAnnounced && score >= goalFor(level)) {
+      goalAnnounced = true;
+      setInfo('Goal reached! Keep going to bank more points.');
+    } else {
+      setInfo(`Popped ${cells.length} for ${gained} points`);
+    }
 
     setTimeout(() => {
       // gravity: drop popped bubbles from each column
@@ -188,6 +263,18 @@
     }, 200);
   }
 
+  function showOverlay(title, text, primary, alt) {
+    overTitle.textContent = title;
+    overText.textContent = text;
+    againBtn.textContent = primary.label;
+    primaryAction = primary.run;
+    altBtn.classList.toggle('hidden', !alt);
+    if (alt) { altBtn.textContent = alt.label; altAction = alt.run; }
+    overlay.classList.remove('hidden');
+  }
+
+  function hideOverlay() { overlay.classList.add('hidden'); }
+
   function checkEnd() {
     if (hasMoves()) return;
     const left = remaining();
@@ -195,14 +282,31 @@
     if (left === 0) bonus = 1000;
     else if (left < 5) bonus = (5 - left) * 100;
     if (bonus) { score += bonus; render(); }
-    overTitle.textContent = left === 0 ? 'Board Cleared!' : 'Game Over';
-    overText.textContent =
-      `Score: ${score}\n` +
-      `Bubbles left: ${left}` +
-      (bonus ? `\nBonus: +${bonus}` : '') +
-      (score >= best && score > 0 ? '\nNew best score!' : '');
     setInfo('No more moves');
-    overlay.classList.remove('hidden');
+    const lines = [`Bubbles left: ${left}`];
+    if (bonus) lines.push(`Bonus: +${bonus}`);
+
+    if (!isLevels()) {
+      lines.unshift(`Score: ${score}`);
+      if (score >= best.classic && score > 0) lines.push('New best score!');
+      showOverlay(left === 0 ? 'Board Cleared!' : 'Game Over', lines.join('\n'),
+        { label: 'Play again', run: newGame }, { label: 'Undo', run: undo });
+      return;
+    }
+
+    const goal = goalFor(level);
+    lines.unshift(`Level score: ${score} / ${goal}`);
+    if (score >= goal) {
+      lines.push(`Total: ${total()}`);
+      showOverlay(`Level ${level} Complete!`, lines.join('\n'),
+        { label: `Level ${level + 1}`, run: () => startLevel(level + 1, total()) },
+        { label: 'Undo', run: undo });
+    } else {
+      lines.push(`Short by ${goal - score} points`);
+      showOverlay('Out of Moves', lines.join('\n'),
+        { label: 'Retry level', run: () => startLevel(level, totalBefore) },
+        { label: 'Undo', run: undo });
+    }
   }
 
   function onTap(e) {
@@ -234,29 +338,37 @@
     const prev = history.pop();
     cols = prev.cols;
     score = prev.score;
-    overlay.classList.add('hidden');
+    if (isLevels()) goalAnnounced = score >= goalFor(level);
+    hideOverlay();
     render();
     setInfo('Undid last move');
   }
 
-  function updateModeBtn() {
+  function updateTapBtn() {
     modeBtn.textContent = twoTap ? '2-tap' : '1-tap';
     modeBtn.title = twoTap ? 'Tap to select, tap again to pop' : 'Tap once to pop';
   }
 
   boardEl.addEventListener('click', onTap);
   undoBtn.addEventListener('click', undo);
-  document.getElementById('newBtn').addEventListener('click', newGame);
-  document.getElementById('againBtn').addEventListener('click', newGame);
+  $('newBtn').addEventListener('click', () => {
+    if (isLevels() && level > 1 && !confirm(`Start over from level 1? You're on level ${level}.`)) return;
+    newGame();
+  });
+  againBtn.addEventListener('click', () => primaryAction && primaryAction());
+  altBtn.addEventListener('click', () => altAction && altAction());
+  classicBtn.addEventListener('click', () => { if (isLevels()) setGameMode('classic'); });
+  levelsBtn.addEventListener('click', () => { if (!isLevels()) setGameMode('levels'); });
   modeBtn.addEventListener('click', () => {
     twoTap = !twoTap;
-    save(MODE_KEY, twoTap ? '2' : '1');
+    save(TAP_KEY, twoTap ? '2' : '1');
     clearSelection();
-    updateModeBtn();
+    updateTapBtn();
   });
 
-  best = parseInt(load(BEST_KEY, '0'), 10) || 0;
-  twoTap = load(MODE_KEY, '2') !== '1';
-  updateModeBtn();
-  newGame();
+  best.classic = parseInt(load(BEST_KEY, '0'), 10) || 0;
+  best.levels = parseInt(load(BEST_LEVELS_KEY, '0'), 10) || 0;
+  twoTap = load(TAP_KEY, '2') !== '1';
+  updateTapBtn();
+  setGameMode(load(GAME_MODE_KEY, 'classic') === 'levels' ? 'levels' : 'classic');
 })();

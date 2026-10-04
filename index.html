@@ -17,10 +17,20 @@
       <button class="pill" id="modeBtn" title="Toggle tap mode">2-tap</button>
     </header>
 
-    <section class="stats">
+    <div class="segmented" role="tablist" aria-label="Game mode">
+      <button class="seg" id="classicBtn" role="tab">Classic</button>
+      <button class="seg" id="levelsBtn" role="tab">Levels</button>
+    </div>
+
+    <section class="stats" id="stats">
       <div class="stat">
-        <span class="label">Score</span>
-        <span class="value" id="score">0</span>
+        <span class="label" id="scoreLabel">Score</span>
+        <span class="value"><span id="score">0</span><span class="goal" id="goal"></span></span>
+        <div class="progress" id="progress"><div class="bar" id="bar"></div></div>
+      </div>
+      <div class="stat levels-only">
+        <span class="label">Total</span>
+        <span class="value" id="total">0</span>
       </div>
       <div class="stat">
         <span class="label">Best</span>
@@ -36,7 +46,10 @@
         <div class="panel">
           <h2 id="overTitle">Game Over</h2>
           <p id="overText"></p>
-          <button class="btn primary" id="againBtn">Play again</button>
+          <div class="panel-actions">
+            <button class="btn" id="altBtn">Undo</button>
+            <button class="btn primary" id="againBtn">Play again</button>
+          </div>
         </div>
       </div>
     </div>
