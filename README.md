@@ -9,9 +9,9 @@ A browser remake of the classic Android *Bubble Breaker* game. Plain HTML/CSS/JS
 - Each bubble in a group is worth 10 more than the last: 5, 15, 25, 35… So 2 bubbles = 20, 3 = 45, 4 = 80, 10 = 500 (`5 × n²`). Bigger groups are worth much more.
 - Bubbles above a popped group fall down. When a column is emptied, the remaining columns slide over to close the gap.
 - **Classic** mode: the game ends when no groups of 2+ remain.
-- End-of-board bonus (both modes): 2,000 for clearing the board, minus 20 × (bubbles left)² — e.g. 5 left = +1,500, 9 left = +380, 10 or more = no bonus.
-- **Levels** mode (10×10 board by default): your running total must reach the level's target — 1,000, 3,000, 5,000, 7,000… (+2,000 per level). When you run out of moves, reaching the goal moves you on to the next level with a fresh board; otherwise it's game over and you start again from level 1. Progress is saved.
-- **Coins**: you start with 100. Completing a stage earns 1 coin, 5 coins if fewer than 5 bubbles are left, or 10 coins for clearing the board.
+- End of board: a bonus panel starts at 2,000 and the leftover bubbles burst one by one, each knocking it down (2,000 − 20 × left², never below 0). The bonus is then added to your score and coins are paid out.
+- **Levels** mode (10×10 board by default): your running total must reach the level's target — 1,000, 3,000, 5,500, 8,000, 11,000, 14,000, 17,500… (the step grows by 500 every other level). When you run out of moves and the bonus is counted, reaching the target rolls you straight into the next level; otherwise it's game over and you start again from level 1. Progress is saved.
+- **Coins**: you start with 100. Completing a stage earns 1 coin, 2 with fewer than 10 bubbles left, 5 with fewer than 5, or 10 for clearing the board.
 - **Powers** (tap one, then tap a bubble; tap the power again to cancel). Undo refunds a power.
   - 🔨 **Hammer** (20 coins): crush the 3×3 area around a bubble (no points).
   - ⭐ **Star** (50 coins): turn the 3×3 area around a bubble into that bubble's color.

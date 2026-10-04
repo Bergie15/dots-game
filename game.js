@@ -47,6 +47,13 @@
   const altBtn = $('altBtn');
   const coinsEl = $('coins');
   const pickerEl = $('picker');
+  const bonusEl = $('bonus');
+  const bonusValue = $('bonusValue');
+  const bonusLeft = $('bonusLeft');
+  const bonusCoins = $('bonusCoins');
+  const bannerEl = $('banner');
+  const bannerTitle = $('bannerTitle');
+  const bannerText = $('bannerText');
 
   // cols[c] is a column stored bottom-up: cols[c][0] is the bottom bubble.
   let cols = [];
@@ -78,11 +85,16 @@
   // the k-th bubble in a group is worth 10k - 5 (5, 15, 25, ...), which sums to 5n²
   const points = n => 5 * n * n;
   // goals scale with how many bubbles fit on the board (medium = 168)
-  // Levels: the running total must reach 1,000, 3,000, 5,000, 7,000, ...
-  // (as in the original), scaled to the board size (10x10 = 100 bubbles).
-  const goalFor = lvl => Math.round((2000 * lvl - 1000) * (COLS * ROWS) / 100 / 100) * 100;
-  // End-of-board bonus: 2,000 for a clear, shrinking fast as more bubbles are left.
-  const bonusFor = left => left < 10 ? 2000 - 20 * left * left : 0;
+  // Levels: the running total must reach 1,000, 3,000, 5,500, 8,000, 11,000, ...
+  // The step grows by 500 every other level (2,000, 2,500, 2,500, 3,000, 3,000, ...),
+  // matching the original's first levels. Scaled to the board size (10x10 = 100).
+  function goalFor(lvl) {
+    let goal = 1000;
+    for (let n = 1; n < lvl; n++) goal += 2000 + 500 * Math.floor(n / 2);
+    return Math.round(goal * (COLS * ROWS) / 100 / 100) * 100;
+  }
+  // End-of-board bonus: 2,000 minus 20 per leftover bubble squared.
+  const bonusFor = left => Math.max(0, 2000 - 20 * left * left);
   const DEFAULT_SIZE = { classic: 'medium', levels: 'large' };
   const isLevels = () => gameMode === 'levels';
   const total = () => totalBefore + score;
@@ -205,6 +217,7 @@
           el.classList.add('c' + b.color);
           el.dataset.color = b.color;
         }
+        el.classList.remove('popping'); // undo can bring back bubbles burst at the end
         el.dataset.c = c;
         el.dataset.i = i;
         el.style.transform = pos;
@@ -343,7 +356,8 @@
   }
 
   // complete a stage: 1 coin, fewer than 5 left: 5 coins, cleared: 10 coins
-  const coinsFor = left => left === 0 ? 10 : left < 5 ? 5 : 1;
+  // 10 for a clear, 5 for fewer than 5 left, 2 for fewer than 10, otherwise 1
+  const coinsFor = left => left === 0 ? 10 : left < 5 ? 5 : left < 10 ? 2 : 1;
 
   function setPower(name) {
     activePower = activePower === name ? null : name;
@@ -448,22 +462,74 @@
 
   function hideOverlay() { overlay.classList.add('hidden'); }
 
-  function checkEnd() {
-    if (hasMoves()) return;
-    const left = remaining();
-    const bonus = bonusFor(left);
-    if (bonus) { score += bonus; render(); }
-    setInfo('No more moves');
-    const lines = [`Bubbles left: ${left}`];
-    if (bonus) lines.push(`Bonus: +${bonus}`);
+  const wait = ms => new Promise(res => setTimeout(res, ms));
 
-    const reward = !isLevels() || total() >= goalFor(level) ? coinsFor(left) : 0;
+  // Count a number on screen from one value to another.
+  async function countTo(el, from, to, ms) {
+    const steps = Math.max(1, Math.round(ms / 30));
+    for (let k = 1; k <= steps; k++) {
+      el.textContent = Math.round(from + (to - from) * k / steps).toLocaleString();
+      await wait(30);
+    }
+  }
+
+  // End of board, like the original: a bonus panel appears, the leftover bubbles
+  // burst one by one (each knocking the bonus down), then the bonus is added to the
+  // score and coins are paid out. Passing a level rolls straight into the next one.
+  async function checkEnd() {
+    if (hasMoves()) return;
+    busy = true;
+    const left = remaining();
+    const passing = !isLevels() || total() + bonusFor(left) >= goalFor(level);
+    const reward = passing ? coinsFor(left) : 0;
+    setInfo(left ? 'No more moves' : 'Board cleared!');
+
+    bonusValue.textContent = '2,000';
+    bonusLeft.textContent = left;
+    bonusCoins.textContent = reward;
+    bonusEl.classList.remove('hidden');
+    await wait(700);
+
+    // burst the leftovers from the top-left, bonus shrinking with each one
+    const leftovers = [];
+    for (let i = ROWS - 1; i >= 0; i--) {
+      cols.forEach(col => { if (col[i]) leftovers.push(col[i].id); });
+    }
+    for (let k = 0; k < leftovers.length; k++) {
+      elements.get(leftovers[k]).classList.add('popping');
+      const before = bonusFor(k), after = bonusFor(k + 1);
+      if (before !== after) countTo(bonusValue, before, after, 100);
+      await wait(130);
+    }
+    await wait(300);
+
+    // move the bonus into the score and pay coins
+    const bonus = bonusFor(left);
+    if (bonus) {
+      const from = score;
+      score += bonus;
+      await Promise.all([
+        countTo(bonusValue, bonus, 0, 600),
+        countTo(scoreEl, isLevels() ? totalBefore + from : from, isLevels() ? total() : score, 600),
+      ]);
+    }
     if (reward) {
       setCoins(coins + reward);
-      lines.push(`Coins: +${reward}`);
+      bonusCoins.textContent = 0;
+      coinsEl.parentElement.classList.remove('bump');
+      coinsEl.parentElement.offsetWidth;
+      coinsEl.parentElement.classList.add('bump');
     }
+    renderStats();
+    await wait(900);
+    bonusEl.classList.add('hidden');
+
+    const lines = [`Bubbles left: ${left}`];
+    if (bonus) lines.push(`Bonus: +${bonus}`);
+    if (reward) lines.push(`Coins: +${reward}`);
 
     if (!isLevels()) {
+      busy = false;
       lines.unshift(`Score: ${score}`);
       if (score >= best.classic && score > 0) lines.push('New best score!');
       showOverlay(left === 0 ? 'Board Cleared!' : 'Game Over', lines.join('\n'),
@@ -472,21 +538,29 @@
     }
 
     const goal = goalFor(level);
+    if (total() >= goal) {
+      // straight on to the next level
+      const next = level + 1;
+      bannerTitle.textContent = `Level ${next}`;
+      bannerText.textContent = `Target ${goalFor(next).toLocaleString()}`;
+      bannerEl.classList.remove('hidden');
+      await wait(1400);
+      bannerEl.classList.add('hidden');
+      busy = false;
+      startLevel(next, total());
+      return;
+    }
+
+    busy = false;
     lines.unshift(`This board: ${score}`);
     lines.push(`Total: ${total()} / ${goal}`);
-    if (total() >= goal) {
-      showOverlay(`Level ${level} Complete!`, lines.join('\n'),
-        { label: `Level ${level + 1}`, run: () => startLevel(level + 1, total()) },
-        { label: 'Undo', run: undo });
-    } else {
-      lines.push(`Short by ${goal - total()} points`);
-      lines.push(`You reached level ${level}`);
-      // losing sends you back to level 1 (undo can still rescue the board)
-      save(PROGRESS_KEY, JSON.stringify({ level: 1, totalBefore: 0 }));
-      showOverlay('Game Over', lines.join('\n'),
-        { label: 'Start over', run: () => startLevel(1, 0) },
-        { label: 'Undo', run: undo });
-    }
+    lines.push(`Short by ${goal - total()} points`);
+    lines.push(`You reached level ${level}`);
+    // losing sends you back to level 1 (undo can still rescue the board)
+    save(PROGRESS_KEY, JSON.stringify({ level: 1, totalBefore: 0 }));
+    showOverlay('Game Over', lines.join('\n'),
+      { label: 'Start over', run: () => startLevel(1, 0) },
+      { label: 'Undo', run: undo });
   }
 
   function onTap(e) {

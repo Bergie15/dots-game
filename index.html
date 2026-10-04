@@ -56,6 +56,16 @@
     <div class="board-wrap">
       <div class="board" id="board"></div>
       <div class="picker hidden" id="picker"></div>
+      <div class="bonus hidden" id="bonus">
+        <div class="bonus-title">Bonus</div>
+        <div class="bonus-value" id="bonusValue">2,000</div>
+        <div class="bonus-row">Remaining <b id="bonusLeft">0</b></div>
+        <div class="bonus-row"><span class="coin"></span><b id="bonusCoins">0</b></div>
+      </div>
+      <div class="banner hidden" id="banner">
+        <div class="banner-title" id="bannerTitle">Level 2</div>
+        <div class="banner-text" id="bannerText">Target 3,000</div>
+      </div>
       <div class="overlay hidden" id="overlay">
         <div class="panel">
           <h2 id="overTitle">Game Over</h2>
@@ -101,7 +111,7 @@
       <ul class="rules">
         <li>Tap 2 or more touching bubbles of the same color to pop them.</li>
         <li>More bubbles, more score: each bubble is worth 10 more than the last (5, 15, 25…).</li>
-        <li>Complete a stage to earn 1 coin — 5 coins with fewer than 5 bubbles left, 10 coins for clearing the board.</li>
+        <li>Complete a stage to earn coins: 1, or 2 with fewer than 10 bubbles left, 5 with fewer than 5, and 10 for clearing the board.</li>
         <li>Spend coins on powers: 🔨 crush a 3×3 area (20), ⭐ turn a 3×3 area one color (50), 🌈 change one bubble's color (100).</li>
       </ul>
     </div>
