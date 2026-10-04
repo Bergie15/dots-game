@@ -106,7 +106,7 @@
     totalBefore = banked;
     save(PROGRESS_KEY, JSON.stringify({ level, totalBefore }));
     fillBoard();
-    setInfo(`Level ${level}: reach a total of ${goalFor(level).toLocaleString()} points`);
+    setInfo(`Level ${level}: reach a target of ${goalFor(level).toLocaleString()} points`);
   }
 
   function newGame() {
@@ -140,17 +140,18 @@
   function findGroup(c, i) {
     const color = cols[c][i].color;
     const seen = new Set();
-    const stack = [[c, i]];
+    const queue = [[c, i]];
     const cells = [];
-    while (stack.length) {
-      const [x, y] = stack.pop();
+    // breadth-first so cells are ordered by distance from the tapped bubble
+    for (let q = 0; q < queue.length; q++) {
+      const [x, y] = queue[q];
       const k = x + ',' + y;
       if (seen.has(k)) continue;
       const b = cols[x] && cols[x][y];
       if (!b || b.color !== color) continue;
       seen.add(k);
       cells.push({ c: x, i: y });
-      stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+      queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
     }
     return cells;
   }
@@ -211,7 +212,7 @@
     if (isLevels()) {
       const goal = goalFor(level);
       scoreLabel.textContent = `Level ${level}`;
-      goalEl.textContent = `Goal ${goal.toLocaleString()}`;
+      goalEl.textContent = `Target ${goal.toLocaleString()}`;
       totalEl.textContent = score;
       const need = Math.max(1, goal - totalBefore);
       barEl.style.width = Math.min(100, Math.max(0, (total() - totalBefore) / need * 100)) + '%';
@@ -234,11 +235,11 @@
     if (previewEl) { previewEl.remove(); previewEl = null; }
   }
 
-  function showFloat(cells, text, preview) {
+  function showFloat(cells, text, preview, small) {
     let sx = 0, sy = 0;
     for (const { c, i } of cells) { sx += c + 0.5; sy += ROWS - 1 - i + 0.5; }
     const el = document.createElement('div');
-    el.className = 'float' + (preview ? ' preview' : '');
+    el.className = 'float' + (preview ? ' preview' : '') + (small ? ' small' : '');
     el.textContent = text;
     el.style.left = (sx / cells.length / COLS * 100) + '%';
     el.style.top = (sy / cells.length / ROWS * 100) + '%';
@@ -255,34 +256,60 @@
     setInfo(`${cells.length} bubbles = ${selection.points} points. Tap again to pop.`);
   }
 
+  const PRAISE = [[20, 'Amazing!'], [14, 'Excellent!'], [9, 'Great!'], [5, 'Good!']];
+
+  function showPraise(n) {
+    const hit = PRAISE.find(([min]) => n >= min);
+    if (!hit) return;
+    const el = document.createElement('div');
+    el.className = 'praise';
+    el.textContent = hit[1];
+    boardEl.appendChild(el);
+    setTimeout(() => el.remove(), 1100);
+  }
+
+  // Bubbles burst one after another, spreading out from the tapped bubble.
+  // The k-th bubble is worth 10k - 5 (5, 15, 25, ...).
   function pop(cells) {
     busy = true;
     history.push(snapshot());
     if (history.length > 50) history.shift();
     clearSelection();
 
-    const gained = points(cells.length);
-    const doomed = new Set(cells.map(({ c, i }) => cols[c][i].id));
-    for (const id of doomed) elements.get(id).classList.add('popping');
-    showFloat(cells, '+' + gained, false);
-    score += gained;
-    renderStats();
-    if (isLevels() && !goalAnnounced && total() >= goalFor(level)) {
-      goalAnnounced = true;
-      setInfo('Goal reached! Keep going to bank more points.');
-    } else {
-      setInfo(`Popped ${cells.length} for ${gained} points`);
-    }
+    const doomed = cells.map(({ c, i }) => cols[c][i].id);
+    const step = Math.min(70, 1000 / cells.length);
+    cells.forEach((cell, k) => {
+      setTimeout(() => {
+        elements.get(doomed[k]).classList.add('popping');
+        const worth = 10 * k + 5;
+        showFloat([cell], '+' + worth, false, true);
+        score += worth;
+        renderStats();
+      }, k * step);
+    });
+
+    const chainTime = (cells.length - 1) * step;
+    setTimeout(() => {
+      showPraise(cells.length);
+      const gained = points(cells.length);
+      if (isLevels() && !goalAnnounced && total() >= goalFor(level)) {
+        goalAnnounced = true;
+        setInfo('Target reached! Keep going to bank more points.');
+      } else {
+        setInfo(`Popped ${cells.length} for ${gained} points`);
+      }
+    }, chainTime);
 
     setTimeout(() => {
+      const gone = new Set(doomed);
       // gravity: drop popped bubbles from each column
-      cols = cols.map(col => col.filter(b => !doomed.has(b.id)));
+      cols = cols.map(col => col.filter(b => !gone.has(b.id)));
       // shift columns: empty columns vanish and the rest slide right
       const filled = cols.filter(col => col.length);
       cols = Array.from({ length: COLS - filled.length }, () => []).concat(filled);
       render();
       setTimeout(() => { busy = false; checkEnd(); }, 260);
-    }, 200);
+    }, chainTime + 220);
   }
 
   function showOverlay(title, text, primary, alt) {
@@ -426,6 +453,6 @@
 
   best.classic = parseInt(load(BEST_KEY, '0'), 10) || 0;
   best.levels = parseInt(load(BEST_LEVELS_KEY, '0'), 10) || 0;
-  twoTap = load(TAP_KEY, '2') !== '1';
+  twoTap = load(TAP_KEY, '1') === '2';
   setGameMode(load(GAME_MODE_KEY, 'classic') === 'levels' ? 'levels' : 'classic');
 })();
