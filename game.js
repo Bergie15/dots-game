@@ -247,7 +247,6 @@
   boardEl.addEventListener('click', onTap);
   undoBtn.addEventListener('click', undo);
   document.getElementById('newBtn').addEventListener('click', newGame);
-  document.getElementById('newBtn2').addEventListener('click', newGame);
   document.getElementById('againBtn').addEventListener('click', newGame);
   modeBtn.addEventListener('click', () => {
     twoTap = !twoTap;

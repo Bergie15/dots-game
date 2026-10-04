@@ -3,35 +3,47 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <meta name="theme-color" content="#1b2f7a">
+  <meta name="theme-color" content="#f3f6fd">
   <title>Bubble Breaker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="topbar">
-    <div class="best">best: <span id="best">0</span></div>
-    <div class="score" id="score">0</div>
-    <button class="mode" id="modeBtn" title="Toggle tap mode">2-tap</button>
-  </header>
+  <main class="app">
+    <header class="topbar">
+      <h1>Bubble Breaker</h1>
+      <button class="pill" id="modeBtn" title="Toggle tap mode">2-tap</button>
+    </header>
 
-  <main>
-    <div class="toolbar">
-      <div class="info" id="info">Tap a group of 2+ matching bubbles</div>
-      <button class="icon-btn" id="newBtn" title="New game" aria-label="New game">&#x21bb;</button>
-    </div>
+    <section class="stats">
+      <div class="stat">
+        <span class="label">Score</span>
+        <span class="value" id="score">0</span>
+      </div>
+      <div class="stat">
+        <span class="label">Best</span>
+        <span class="value" id="best">0</span>
+      </div>
+    </section>
+
+    <div class="info" id="info">Tap a group of 2+ matching bubbles</div>
+
     <div class="board-wrap">
       <div class="board" id="board"></div>
       <div class="overlay hidden" id="overlay">
         <div class="panel">
           <h2 id="overTitle">Game Over</h2>
           <p id="overText"></p>
-          <button class="btn" id="againBtn">Play Again</button>
+          <button class="btn primary" id="againBtn">Play again</button>
         </div>
       </div>
     </div>
+
     <div class="controls">
-      <button class="btn" id="newBtn2">NEW GAME</button>
-      <button class="btn" id="undoBtn">UNDO</button>
+      <button class="btn" id="newBtn">New game</button>
+      <button class="btn primary" id="undoBtn">Undo</button>
     </div>
   </main>
 
