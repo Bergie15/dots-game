@@ -30,11 +30,12 @@
     <section class="stats" id="stats">
       <div class="stat">
         <span class="label" id="scoreLabel">Score</span>
-        <span class="value"><span id="score">0</span><span class="goal" id="goal"></span></span>
+        <span class="value" id="score">0</span>
         <div class="progress" id="progress"><div class="bar" id="bar"></div></div>
+        <span class="goal" id="goal"></span>
       </div>
       <div class="stat levels-only">
-        <span class="label">Total</span>
+        <span class="label">Board</span>
         <span class="value" id="total">0</span>
       </div>
       <div class="stat">
@@ -79,7 +80,7 @@
         <button class="option" data-size="large"><span class="dot" style="--d:18px"></span>Large</button>
         <button class="option" data-size="xl"><span class="dot" style="--d:22px"></span>Extra large</button>
       </div>
-      <p class="hint">Bigger bubbles means fewer on the board. Changing size starts a new board.</p>
+      <p class="hint">Bigger bubbles means fewer on the board. Each mode remembers its own size. Changing size starts a new board.</p>
 
       <h3>Popping</h3>
       <div class="segmented" id="tapOptions">

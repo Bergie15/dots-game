@@ -4,7 +4,7 @@
   const SIZES = {
     small: { cols: 14, rows: 16 },
     medium: { cols: 12, rows: 14 },
-    large: { cols: 10, rows: 12 },
+    large: { cols: 10, rows: 10 },
     xl: { cols: 8, rows: 9 },
   };
   let COLS = 12;
@@ -65,7 +65,16 @@
 
   const points = n => n * (n - 1);
   // goals scale with how many bubbles fit on the board (medium = 168)
-  const goalFor = lvl => Math.round((300 + 200 * (lvl - 1)) * (COLS * ROWS) / 168 / 10) * 10;
+  // Levels: the running total must reach a Fibonacci number of thousands
+  // (1k, 2k, 3k, 5k, 8k, ...), scaled to the board size (10x10 = 100 bubbles).
+  function goalFor(lvl) {
+    let a = 1, b = 2;
+    for (let n = 1; n < lvl; n++) [a, b] = [b, a + b];
+    return Math.round(a * 1000 * (COLS * ROWS) / 100 / 100) * 100;
+  }
+  // End-of-board bonus for leaving few bubbles behind.
+  const bonusFor = left => left === 0 ? 2500 : Math.max(0, 20 - left) * 100;
+  const DEFAULT_SIZE = { classic: 'medium', levels: 'large' };
   const isLevels = () => gameMode === 'levels';
   const total = () => totalBefore + score;
 
@@ -96,7 +105,7 @@
     totalBefore = banked;
     save(PROGRESS_KEY, JSON.stringify({ level, totalBefore }));
     fillBoard();
-    setInfo(`Level ${level}: score ${goalFor(level)} points before you run out of moves`);
+    setInfo(`Level ${level}: reach a total of ${goalFor(level).toLocaleString()} points`);
   }
 
   function newGame() {
@@ -112,6 +121,7 @@
     levelsBtn.classList.toggle('active', isLevels());
     classicBtn.setAttribute('aria-selected', !isLevels());
     levelsBtn.setAttribute('aria-selected', isLevels());
+    applySize(load(SIZE_KEY + '.' + mode, DEFAULT_SIZE[mode]));
     if (isLevels()) {
       let saved = null;
       try { saved = JSON.parse(load(PROGRESS_KEY, 'null')); } catch { /* ignore */ }
@@ -190,7 +200,7 @@
   }
 
   function renderStats() {
-    scoreEl.textContent = score;
+    scoreEl.textContent = isLevels() ? total() : score;
     const shown = isLevels() ? total() : score;
     if (shown > best[gameMode]) {
       best[gameMode] = shown;
@@ -200,10 +210,11 @@
     if (isLevels()) {
       const goal = goalFor(level);
       scoreLabel.textContent = `Level ${level}`;
-      goalEl.textContent = ` / ${goal}`;
-      totalEl.textContent = total();
-      barEl.style.width = Math.min(100, score / goal * 100) + '%';
-      barEl.classList.toggle('done', score >= goal);
+      goalEl.textContent = `Goal ${goal.toLocaleString()}`;
+      totalEl.textContent = score;
+      const need = Math.max(1, goal - totalBefore);
+      barEl.style.width = Math.min(100, Math.max(0, (total() - totalBefore) / need * 100)) + '%';
+      barEl.classList.toggle('done', total() >= goal);
     } else {
       scoreLabel.textContent = 'Score';
     }
@@ -255,7 +266,7 @@
     showFloat(cells, '+' + gained, false);
     score += gained;
     renderStats();
-    if (isLevels() && !goalAnnounced && score >= goalFor(level)) {
+    if (isLevels() && !goalAnnounced && total() >= goalFor(level)) {
       goalAnnounced = true;
       setInfo('Goal reached! Keep going to bank more points.');
     } else {
@@ -288,9 +299,7 @@
   function checkEnd() {
     if (hasMoves()) return;
     const left = remaining();
-    let bonus = 0;
-    if (left === 0) bonus = 1000;
-    else if (left < 5) bonus = (5 - left) * 100;
+    const bonus = bonusFor(left);
     if (bonus) { score += bonus; render(); }
     setInfo('No more moves');
     const lines = [`Bubbles left: ${left}`];
@@ -305,14 +314,14 @@
     }
 
     const goal = goalFor(level);
-    lines.unshift(`Level score: ${score} / ${goal}`);
-    if (score >= goal) {
-      lines.push(`Total: ${total()}`);
+    lines.unshift(`This board: ${score}`);
+    lines.push(`Total: ${total()} / ${goal}`);
+    if (total() >= goal) {
       showOverlay(`Level ${level} Complete!`, lines.join('\n'),
         { label: `Level ${level + 1}`, run: () => startLevel(level + 1, total()) },
         { label: 'Undo', run: undo });
     } else {
-      lines.push(`Short by ${goal - score} points`);
+      lines.push(`Short by ${goal - total()} points`);
       showOverlay('Out of Moves', lines.join('\n'),
         { label: 'Retry level', run: () => startLevel(level, totalBefore) },
         { label: 'Undo', run: undo });
@@ -348,7 +357,7 @@
     const prev = history.pop();
     cols = prev.cols;
     score = prev.score;
-    if (isLevels()) goalAnnounced = score >= goalFor(level);
+    if (isLevels()) goalAnnounced = total() >= goalFor(level);
     hideOverlay();
     render();
     setInfo('Undid last move');
@@ -368,7 +377,7 @@
     if (history.length && overlay.classList.contains('hidden') &&
         !confirm('Changing bubble size starts a new board. Continue?')) return;
     applySize(name);
-    save(SIZE_KEY, size);
+    save(SIZE_KEY + '.' + gameMode, size);
     // classic starts over; levels replays the current level on the new board
     if (isLevels()) startLevel(level, totalBefore);
     else startClassic();
@@ -411,6 +420,5 @@
   best.classic = parseInt(load(BEST_KEY, '0'), 10) || 0;
   best.levels = parseInt(load(BEST_LEVELS_KEY, '0'), 10) || 0;
   twoTap = load(TAP_KEY, '2') !== '1';
-  applySize(load(SIZE_KEY, 'medium'));
   setGameMode(load(GAME_MODE_KEY, 'classic') === 'levels' ? 'levels' : 'classic');
 })();
