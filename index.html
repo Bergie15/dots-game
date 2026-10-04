@@ -14,6 +14,7 @@
   <main class="app">
     <header class="topbar">
       <h1>Bubble Breaker</h1>
+      <div class="coins" title="Coins"><span class="coin" aria-hidden="true"></span><span id="coins">0</span></div>
       <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Settings">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="3"/>
@@ -46,8 +47,15 @@
 
     <div class="info" id="info">Tap a group of 2+ matching bubbles</div>
 
+    <div class="powers">
+      <button class="power" data-power="hammer" title="Crush the 3×3 around a bubble"><span class="emoji">🔨</span><span class="cost"><span class="coin"></span>20</span></button>
+      <button class="power" data-power="star" title="Turn the 3×3 around a bubble into its color"><span class="emoji">⭐</span><span class="cost"><span class="coin"></span>50</span></button>
+      <button class="power" data-power="rainbow" title="Change one bubble's color"><span class="emoji">🌈</span><span class="cost"><span class="coin"></span>100</span></button>
+    </div>
+
     <div class="board-wrap">
       <div class="board" id="board"></div>
+      <div class="picker hidden" id="picker"></div>
       <div class="overlay hidden" id="overlay">
         <div class="panel">
           <h2 id="overTitle">Game Over</h2>
@@ -88,6 +96,14 @@
         <button class="seg" data-tap="2">Tap twice</button>
       </div>
       <p class="hint">Tap twice shows the points before popping.</p>
+
+      <h3>How to play</h3>
+      <ul class="rules">
+        <li>Tap 2 or more touching bubbles of the same color to pop them.</li>
+        <li>More bubbles, more score: each bubble is worth 10 more than the last (5, 15, 25…).</li>
+        <li>Complete a stage to earn 1 coin — 5 coins with fewer than 5 bubbles left, 10 coins for clearing the board.</li>
+        <li>Spend coins on powers: 🔨 crush a 3×3 area (20), ⭐ turn a 3×3 area one color (50), 🌈 change one bubble's color (100).</li>
+      </ul>
     </div>
   </div>
 

@@ -17,6 +17,14 @@
   const TAP_KEY = 'bubbleBreaker.tapMode';
   const GAME_MODE_KEY = 'bubbleBreaker.gameMode';
   const SIZE_KEY = 'bubbleBreaker.size';
+  const COINS_KEY = 'bubbleBreaker.coins';
+  const START_COINS = 100;
+  const POWERS = {
+    hammer: { cost: 20, hint: 'Hammer: tap a bubble to crush the 3×3 around it' },
+    star: { cost: 50, hint: 'Star: tap a bubble to turn the 3×3 around it that color' },
+    rainbow: { cost: 100, hint: 'Rainbow: tap a bubble to change its color' },
+  };
+  const COLOR_NAMES = ['Red', 'Blue', 'Green', 'Yellow', 'Purple'];
 
   const $ = id => document.getElementById(id);
   const boardEl = $('board');
@@ -37,6 +45,8 @@
   const overText = $('overText');
   const againBtn = $('againBtn');
   const altBtn = $('altBtn');
+  const coinsEl = $('coins');
+  const pickerEl = $('picker');
 
   // cols[c] is a column stored bottom-up: cols[c][0] is the bottom bubble.
   let cols = [];
@@ -55,6 +65,8 @@
   const best = { classic: 0, levels: 0 };
   const elements = new Map(); // bubble id -> element
   let previewEl = null;
+  let coins = START_COINS;
+  let activePower = null;
 
   function load(key, fallback) {
     try { const v = localStorage.getItem(key); return v === null ? fallback : v; } catch { return fallback; }
@@ -85,6 +97,8 @@
     score = 0;
     history = [];
     goalAnnounced = false;
+    if (activePower) setPower(activePower);
+    hidePicker();
     clearSelection();
     hideOverlay();
     for (const el of elements.values()) el.remove();
@@ -130,7 +144,7 @@
   }
 
   function snapshot() {
-    return { cols: cols.map(col => col.map(b => ({ ...b }))), score };
+    return { cols: cols.map(col => col.map(b => ({ ...b }))), score, coins };
   }
 
   function findGroup(c, i) {
@@ -178,12 +192,18 @@
         if (!el) {
           el = document.createElement('div');
           el.className = 'bubble c' + b.color;
+          el.dataset.color = b.color;
           el.style.transition = 'none';
           elements.set(b.id, el);
           boardEl.appendChild(el);
           el.style.transform = pos;
           el.offsetWidth; // commit position before re-enabling transitions
           el.style.transition = '';
+        }
+        if (el.dataset.color !== String(b.color)) {
+          el.classList.remove('c' + el.dataset.color);
+          el.classList.add('c' + b.color);
+          el.dataset.color = b.color;
         }
         el.dataset.c = c;
         el.dataset.i = i;
@@ -296,17 +316,125 @@
       }
     }, chainTime);
 
-    setTimeout(() => {
-      const gone = new Set(doomed);
-      // gravity: drop popped bubbles from each column
-      cols = cols.map(col => col.filter(b => !gone.has(b.id)));
-      // shift columns: empty columns vanish and the rest slide right
-      const filled = cols.filter(col => col.length);
-      cols = Array.from({ length: COLS - filled.length }, () => []).concat(filled);
-      render();
-      setTimeout(() => { busy = false; checkEnd(); }, 260);
-    }, chainTime + 220);
+    setTimeout(() => collapse(doomed), chainTime + 220);
   }
+
+  // Remove bubbles by id, let the rest fall and close empty columns.
+  function collapse(ids) {
+    const gone = new Set(ids);
+    // gravity: drop popped bubbles from each column
+    cols = cols.map(col => col.filter(b => !gone.has(b.id)));
+    // shift columns: empty columns vanish and the rest slide right
+    const filled = cols.filter(col => col.length);
+    cols = Array.from({ length: COLS - filled.length }, () => []).concat(filled);
+    render();
+    setTimeout(() => { busy = false; checkEnd(); }, 260);
+  }
+
+  // ---- coins & powers ----
+
+  function setCoins(n) {
+    coins = n;
+    save(COINS_KEY, coins);
+    coinsEl.textContent = coins;
+    for (const b of document.querySelectorAll('.power')) {
+      b.classList.toggle('poor', coins < POWERS[b.dataset.power].cost);
+    }
+  }
+
+  // complete a stage: 1 coin, fewer than 5 left: 5 coins, cleared: 10 coins
+  const coinsFor = left => left === 0 ? 10 : left < 5 ? 5 : 1;
+
+  function setPower(name) {
+    activePower = activePower === name ? null : name;
+    for (const b of document.querySelectorAll('.power')) b.classList.toggle('active', b.dataset.power === activePower);
+    boardEl.classList.toggle('aiming', !!activePower);
+    clearSelection();
+    hidePicker();
+    if (activePower && coins < POWERS[activePower].cost) {
+      setInfo(`Not enough coins — ${POWERS[activePower].cost} needed`);
+      activePower = null;
+      for (const b of document.querySelectorAll('.power')) b.classList.remove('active');
+      boardEl.classList.remove('aiming');
+      return;
+    }
+    setInfo(activePower ? POWERS[activePower].hint : 'Tap a group of 2+ matching bubbles');
+  }
+
+  function area3x3(c, i) {
+    const cells = [];
+    for (let x = c - 1; x <= c + 1; x++) {
+      for (let y = i - 1; y <= i + 1; y++) {
+        if (cols[x] && cols[x][y]) cells.push({ c: x, i: y });
+      }
+    }
+    return cells;
+  }
+
+  function spend(name) {
+    history.push(snapshot());
+    if (history.length > 50) history.shift();
+    setCoins(coins - POWERS[name].cost);
+    setPower(name); // toggles it off
+  }
+
+  function usePower(c, i) {
+    const name = activePower;
+    if (name === 'rainbow') { showPicker(c, i); return; }
+    spend(name);
+    if (name === 'hammer') {
+      busy = true;
+      const ids = area3x3(c, i).map(({ c: x, i: y }) => cols[x][y].id);
+      for (const id of ids) elements.get(id).classList.add('popping');
+      setInfo(`Crushed ${ids.length} bubbles`);
+      setTimeout(() => collapse(ids), 260);
+    } else if (name === 'star') {
+      const color = cols[c][i].color;
+      for (const { c: x, i: y } of area3x3(c, i)) cols[x][y].color = color;
+      flash(area3x3(c, i));
+      render();
+      setInfo(`3×3 turned ${COLOR_NAMES[color].toLowerCase()}`);
+      checkEnd();
+    }
+  }
+
+  function flash(cells) {
+    for (const { c, i } of cells) {
+      const el = elements.get(cols[c][i].id);
+      el.classList.remove('changed');
+      el.offsetWidth;
+      el.classList.add('changed');
+    }
+  }
+
+  function showPicker(c, i) {
+    const current = cols[c][i].color;
+    pickerEl.innerHTML = '';
+    COLOR_NAMES.forEach((name, color) => {
+      if (color === current) return;
+      const b = document.createElement('button');
+      b.className = 'swatch c' + color;
+      b.setAttribute('aria-label', name);
+      b.addEventListener('click', ev => {
+        ev.stopPropagation();
+        hidePicker();
+        spend('rainbow');
+        cols[c][i].color = color;
+        flash([{ c, i }]);
+        render();
+        setInfo(`Changed to ${name.toLowerCase()}`);
+        checkEnd();
+      });
+      pickerEl.appendChild(b);
+    });
+    // keep the picker inside the board horizontally
+    pickerEl.style.left = Math.min(72, Math.max(28, (c + 0.5) / COLS * 100)) + '%';
+    pickerEl.style.top = ((ROWS - 1 - i) / ROWS * 100) + '%';
+    pickerEl.classList.remove('hidden');
+    setInfo('Pick a new color');
+  }
+
+  function hidePicker() { pickerEl.classList.add('hidden'); }
 
   function showOverlay(title, text, primary, alt) {
     overTitle.textContent = title;
@@ -328,6 +456,12 @@
     setInfo('No more moves');
     const lines = [`Bubbles left: ${left}`];
     if (bonus) lines.push(`Bonus: +${bonus}`);
+
+    const reward = !isLevels() || total() >= goalFor(level) ? coinsFor(left) : 0;
+    if (reward) {
+      setCoins(coins + reward);
+      lines.push(`Coins: +${reward}`);
+    }
 
     if (!isLevels()) {
       lines.unshift(`Score: ${score}`);
@@ -358,10 +492,11 @@
   function onTap(e) {
     if (busy) return;
     const el = e.target.closest('.bubble');
-    if (!el) { clearSelection(); return; }
+    if (!el) { clearSelection(); hidePicker(); return; }
     const c = +el.dataset.c, i = +el.dataset.i;
     const b = cols[c] && cols[c][i];
     if (!b) return;
+    if (activePower) { usePower(c, i); return; }
 
     if (selection && selection.ids.has(b.id)) { pop(selection.cells); return; }
 
@@ -384,6 +519,7 @@
     const prev = history.pop();
     cols = prev.cols;
     score = prev.score;
+    setCoins(prev.coins);
     if (isLevels()) {
       goalAnnounced = total() >= goalFor(level);
       save(PROGRESS_KEY, JSON.stringify({ level, totalBefore }));
@@ -446,6 +582,11 @@
       updateSettingsUI();
     });
   }
+
+  for (const b of document.querySelectorAll('.power')) {
+    b.addEventListener('click', () => { if (!busy) setPower(b.dataset.power); });
+  }
+  setCoins(parseInt(load(COINS_KEY, String(START_COINS)), 10) || 0);
 
   best.classic = parseInt(load(BEST_KEY, '0'), 10) || 0;
   best.levels = parseInt(load(BEST_LEVELS_KEY, '0'), 10) || 0;
