@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#1b2f7a">
+  <title>Bubble Breaker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="best">best: <span id="best">0</span></div>
+    <div class="score" id="score">0</div>
+    <button class="mode" id="modeBtn" title="Toggle tap mode">2-tap</button>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <div class="info" id="info">Tap a group of 2+ matching bubbles</div>
+      <button class="icon-btn" id="newBtn" title="New game" aria-label="New game">&#x21bb;</button>
+    </div>
+    <div class="board-wrap">
+      <div class="board" id="board"></div>
+      <div class="overlay hidden" id="overlay">
+        <div class="panel">
+          <h2 id="overTitle">Game Over</h2>
+          <p id="overText"></p>
+          <button class="btn" id="againBtn">Play Again</button>
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn" id="newBtn2">NEW GAME</button>
+      <button class="btn" id="undoBtn">UNDO</button>
+    </div>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
