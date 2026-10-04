@@ -6,7 +6,7 @@ A browser remake of the classic Android *Bubble Breaker* game. Plain HTML/CSS/JS
 
 - Tap a group of **2 or more** touching bubbles of the same color (up/down/left/right).
 - In **2-tap** mode (default) the first tap highlights the group and shows its value; tap it again to pop. Switch to tap-once popping in **Settings** (gear icon).
-- A group of `n` bubbles scores `n × (n − 1)` points, so bigger groups are worth much more.
+- Each bubble in a group is worth 10 more than the last: 5, 15, 25, 35… So 2 bubbles = 20, 3 = 45, 4 = 80, 10 = 500 (`5 × n²`). Bigger groups are worth much more.
 - Bubbles above a popped group fall down. When a column is emptied, the remaining columns slide over to close the gap.
 - **Classic** mode: the game ends when no groups of 2+ remain.
 - End-of-board bonus (both modes): +100 for every bubble under 20 left, or +2,500 for clearing the board.

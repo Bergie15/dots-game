@@ -63,7 +63,8 @@
     try { localStorage.setItem(key, value); } catch { /* storage unavailable */ }
   }
 
-  const points = n => n * (n - 1);
+  // the k-th bubble in a group is worth 10k - 5 (5, 15, 25, ...), which sums to 5n²
+  const points = n => 5 * n * n;
   // goals scale with how many bubbles fit on the board (medium = 168)
   // Levels: the running total must reach a Fibonacci number of thousands
   // (1k, 2k, 3k, 5k, 8k, ...), scaled to the board size (10x10 = 100 bubbles).
