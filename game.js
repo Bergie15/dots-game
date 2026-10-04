@@ -1,14 +1,22 @@
 (() => {
   'use strict';
 
-  const COLS = 12;
-  const ROWS = 14;
+  const SIZES = {
+    small: { cols: 14, rows: 16 },
+    medium: { cols: 12, rows: 14 },
+    large: { cols: 10, rows: 12 },
+    xl: { cols: 8, rows: 9 },
+  };
+  let COLS = 12;
+  let ROWS = 14;
+  let size = 'medium';
   const COLORS = 5;
   const BEST_KEY = 'bubbleBreaker.best';
   const BEST_LEVELS_KEY = 'bubbleBreaker.bestLevels';
   const PROGRESS_KEY = 'bubbleBreaker.levelProgress';
   const TAP_KEY = 'bubbleBreaker.tapMode';
   const GAME_MODE_KEY = 'bubbleBreaker.gameMode';
+  const SIZE_KEY = 'bubbleBreaker.size';
 
   const $ = id => document.getElementById(id);
   const boardEl = $('board');
@@ -20,7 +28,8 @@
   const bestEl = $('best');
   const infoEl = $('info');
   const undoBtn = $('undoBtn');
-  const modeBtn = $('modeBtn');
+  const settingsEl = $('settings');
+  const boardWrap = document.querySelector('.board-wrap');
   const classicBtn = $('classicBtn');
   const levelsBtn = $('levelsBtn');
   const overlay = $('overlay');
@@ -55,7 +64,8 @@
   }
 
   const points = n => n * (n - 1);
-  const goalFor = lvl => 300 + 200 * (lvl - 1);
+  // goals scale with how many bubbles fit on the board (medium = 168)
+  const goalFor = lvl => Math.round((300 + 200 * (lvl - 1)) * (COLS * ROWS) / 168 / 10) * 10;
   const isLevels = () => gameMode === 'levels';
   const total = () => totalBefore + score;
 
@@ -344,10 +354,33 @@
     setInfo('Undid last move');
   }
 
-  function updateTapBtn() {
-    modeBtn.textContent = twoTap ? '2-tap' : '1-tap';
-    modeBtn.title = twoTap ? 'Tap to select, tap again to pop' : 'Tap once to pop';
+  function applySize(name) {
+    size = SIZES[name] ? name : 'medium';
+    COLS = SIZES[size].cols;
+    ROWS = SIZES[size].rows;
+    boardWrap.style.setProperty('--cols', COLS);
+    boardWrap.style.setProperty('--rows', ROWS);
+    updateSettingsUI();
   }
+
+  function changeSize(name) {
+    if (name === size || busy) return;
+    if (history.length && overlay.classList.contains('hidden') &&
+        !confirm('Changing bubble size starts a new board. Continue?')) return;
+    applySize(name);
+    save(SIZE_KEY, size);
+    // classic starts over; levels replays the current level on the new board
+    if (isLevels()) startLevel(level, totalBefore);
+    else startClassic();
+  }
+
+  function updateSettingsUI() {
+    for (const b of document.querySelectorAll('#sizeOptions .option')) b.classList.toggle('active', b.dataset.size === size);
+    for (const b of document.querySelectorAll('#tapOptions .seg')) b.classList.toggle('active', (b.dataset.tap === '2') === twoTap);
+  }
+
+  function openSettings() { updateSettingsUI(); settingsEl.classList.remove('hidden'); }
+  function closeSettings() { settingsEl.classList.add('hidden'); }
 
   boardEl.addEventListener('click', onTap);
   undoBtn.addEventListener('click', undo);
@@ -359,16 +392,25 @@
   altBtn.addEventListener('click', () => altAction && altAction());
   classicBtn.addEventListener('click', () => { if (isLevels()) setGameMode('classic'); });
   levelsBtn.addEventListener('click', () => { if (!isLevels()) setGameMode('levels'); });
-  modeBtn.addEventListener('click', () => {
-    twoTap = !twoTap;
-    save(TAP_KEY, twoTap ? '2' : '1');
-    clearSelection();
-    updateTapBtn();
-  });
+  $('settingsBtn').addEventListener('click', openSettings);
+  $('closeSettings').addEventListener('click', closeSettings);
+  settingsEl.addEventListener('click', e => { if (e.target === settingsEl) closeSettings(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSettings(); });
+  for (const b of document.querySelectorAll('#sizeOptions .option')) {
+    b.addEventListener('click', () => changeSize(b.dataset.size));
+  }
+  for (const b of document.querySelectorAll('#tapOptions .seg')) {
+    b.addEventListener('click', () => {
+      twoTap = b.dataset.tap === '2';
+      save(TAP_KEY, twoTap ? '2' : '1');
+      clearSelection();
+      updateSettingsUI();
+    });
+  }
 
   best.classic = parseInt(load(BEST_KEY, '0'), 10) || 0;
   best.levels = parseInt(load(BEST_LEVELS_KEY, '0'), 10) || 0;
   twoTap = load(TAP_KEY, '2') !== '1';
-  updateTapBtn();
+  applySize(load(SIZE_KEY, 'medium'));
   setGameMode(load(GAME_MODE_KEY, 'classic') === 'levels' ? 'levels' : 'classic');
 })();
