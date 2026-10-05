@@ -2,6 +2,7 @@
   'use strict';
 
   const SIZES = {
+    tiny: { cols: 16, rows: 19 },
     small: { cols: 14, rows: 16 },
     medium: { cols: 12, rows: 14 },
     large: { cols: 10, rows: 10 },
@@ -95,7 +96,9 @@
   }
   // End-of-board bonus: 2,000 minus 20 per leftover bubble squared.
   const bonusFor = left => Math.max(0, 2000 - 20 * left * left);
-  const DEFAULT_SIZE = { classic: 'medium', levels: 'large' };
+  const DEFAULT_SIZE = { classic: 'small', levels: 'large' };
+  // classic's key was bumped when its default grew to more bubbles
+  const sizeKey = mode => SIZE_KEY + '.' + mode + (mode === 'classic' ? '.v2' : '');
   const isLevels = () => gameMode === 'levels';
   const total = () => totalBefore + score;
 
@@ -144,7 +147,7 @@
     levelsBtn.classList.toggle('active', isLevels());
     classicBtn.setAttribute('aria-selected', !isLevels());
     levelsBtn.setAttribute('aria-selected', isLevels());
-    applySize(load(SIZE_KEY + '.' + mode, DEFAULT_SIZE[mode]));
+    applySize(load(sizeKey(mode), DEFAULT_SIZE[mode]));
     if (isLevels()) {
       let saved = null;
       try { saved = JSON.parse(load(PROGRESS_KEY, 'null')); } catch { /* ignore */ }
@@ -481,7 +484,8 @@
     busy = true;
     const left = remaining();
     const passing = !isLevels() || total() + bonusFor(left) >= goalFor(level);
-    const reward = passing ? coinsFor(left) : 0;
+    // coins and powers belong to Levels; Classic is plain bubble popping
+    const reward = isLevels() && passing ? coinsFor(left) : 0;
     setInfo(left ? 'No more moves' : 'Board cleared!');
 
     bonusValue.textContent = '2,000';
@@ -617,7 +621,7 @@
     if (history.length && overlay.classList.contains('hidden') &&
         !confirm('Changing bubble size starts a new board. Continue?')) return;
     applySize(name);
-    save(SIZE_KEY + '.' + gameMode, size);
+    save(sizeKey(gameMode), size);
     // classic starts over; levels replays the current level on the new board
     if (isLevels()) startLevel(level, totalBefore);
     else startClassic();
@@ -658,7 +662,7 @@
   }
 
   for (const b of document.querySelectorAll('.power')) {
-    b.addEventListener('click', () => { if (!busy) setPower(b.dataset.power); });
+    b.addEventListener('click', () => { if (!busy && isLevels()) setPower(b.dataset.power); });
   }
   setCoins(parseInt(load(COINS_KEY, String(START_COINS)), 10) || 0);
 

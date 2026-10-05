@@ -8,15 +8,15 @@ A browser remake of the classic Android *Bubble Breaker* game. Plain HTML/CSS/JS
 - One tap pops a group: the bubbles burst one after another outward from where you tapped, each showing its points. Big groups get a "Good!", "Great!" or "Perfect!". If you prefer to preview a group's value first, switch to **Tap twice** in **Settings** (gear icon).
 - Each bubble in a group is worth 10 more than the last: 5, 15, 25, 35… So 2 bubbles = 20, 3 = 45, 4 = 80, 10 = 500 (`5 × n²`). Bigger groups are worth much more.
 - Bubbles above a popped group fall down. When a column is emptied, the remaining columns slide over to close the gap.
-- **Classic** mode: the game ends when no groups of 2+ remain.
+- **Classic** mode: plain bubble popping on a bigger board (14×16 by default), no coins or powers. The game ends when no groups of 2+ remain.
 - End of board: a bonus panel starts at 2,000 and the leftover bubbles burst one by one, each knocking it down (2,000 − 20 × left², never below 0). The bonus is then added to your score and coins are paid out.
 - **Levels** mode (10×10 board by default): your running total must reach the level's target — 1,000, 3,000, 5,500, 8,000, 11,000, 14,000, 17,500… (the step grows by 500 every other level). When you run out of moves and the bonus is counted, reaching the target rolls you straight into the next level; otherwise it's game over and you start again from level 1. Progress is saved.
-- **Coins**: you start with 100. Completing a stage earns 1 coin, 2 with fewer than 10 bubbles left, 5 with fewer than 5, or 10 for clearing the board.
+- **Coins** (Levels only): you start with 100. Completing a stage earns 1 coin, 2 with fewer than 10 bubbles left, 5 with fewer than 5, or 10 for clearing the board.
 - **Powers** (tap one, then tap a bubble; tap the power again to cancel). Undo refunds a power.
   - 🔨 **Hammer** (20 coins): crush the 3×3 area around a bubble (no points).
   - ⭐ **Star** (50 coins): turn the 3×3 area around a bubble into that bubble's color.
   - 🌈 **Rainbow** (100 coins): change one bubble to a color you pick.
-- **Settings** (gear icon) also lets you pick the bubble size: Small (14×16), Medium (12×14), Large (10×10) or Extra large (8×9). Each mode remembers its own size (Classic defaults to Medium, Levels to Large); level goals scale with the number of bubbles on the board.
+- **Settings** (gear icon) also lets you pick the bubble size: Tiny (16×19), Small (14×16), Medium (12×14), Large (10×10) or Extra large (8×9). Each mode remembers its own size (Classic defaults to Small, Levels to Large); level goals scale with the number of bubbles on the board.
 - **Undo** reverts your last move; your best score is saved in the browser.
 
 ## Hosting on GitHub Pages
