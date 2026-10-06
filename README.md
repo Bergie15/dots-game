@@ -11,7 +11,7 @@ A browser remake of the classic Android *Bubble Breaker* game. Plain HTML/CSS/JS
 - **Classic** mode: plain bubble popping on a bigger board (14×16 by default), no coins or powers. The game ends when no groups of 2+ remain.
 - End of board: a bonus panel starts at 2,000 and the leftover bubbles burst one by one, each knocking it down (2,000 − 20 × left², never below 0). The bonus is then added to your score and coins are paid out.
 - **Levels** mode (10×10 board by default): your running total must reach the level's target — 1,000, 3,000, 5,500, 8,000, 11,000, 14,000, 17,500… (the step grows by 500 every other level). When you run out of moves and the bonus is counted, reaching the target rolls you straight into the next level; otherwise it's game over and you start again from level 1. Progress is saved.
-- **Coins** (Levels only): you start with 100. Completing a stage earns 1 coin, 2 with fewer than 10 bubbles left, 5 with fewer than 5, or 10 for clearing the board.
+- **Coins** (Levels only): you start with 100. Pop a big group to earn coins right away (8+ bubbles: 1, 12+: 3, 16+: 5). Completing a stage earns 5 coins, plus 5 with fewer than 10 bubbles left, 10 with fewer than 5, or 20 for clearing the board.
 - **Powers** (tap one, then tap a bubble; tap the power again to cancel). Undo refunds a power.
   - 🔨 **Hammer** (20 coins): crush the 3×3 area around a bubble (no points).
   - ⭐ **Star** (50 coins): turn the 3×3 area around a bubble into that bubble's color.

@@ -323,6 +323,11 @@
     const chainTime = (cells.length - 1) * step;
     setTimeout(() => {
       showPraise(cells.length);
+      const earned = isLevels() ? groupCoins(cells.length) : 0;
+      if (earned) {
+        payCoins(earned);
+        showFloat(cells, `+${earned} coin${earned > 1 ? 's' : ''}`, false);
+      }
       const gained = points(cells.length);
       if (isLevels() && !goalAnnounced && total() >= goalFor(level)) {
         goalAnnounced = true;
@@ -360,7 +365,17 @@
 
   // complete a stage: 1 coin, fewer than 5 left: 5 coins, cleared: 10 coins
   // 10 for a clear, 5 for fewer than 5 left, 2 for fewer than 10, otherwise 1
-  const coinsFor = left => left === 0 ? 10 : left < 5 ? 5 : left < 10 ? 2 : 1;
+  // stage reward: 5 coins, +5 with fewer than 10 left, +10 with fewer than 5, +20 for a clear
+  const coinsFor = left => 5 + (left === 0 ? 20 : left < 5 ? 10 : left < 10 ? 5 : 0);
+  // big groups pay coins straight away (Levels only)
+  const groupCoins = n => n >= 16 ? 5 : n >= 12 ? 3 : n >= 8 ? 1 : 0;
+
+  function payCoins(n) {
+    setCoins(coins + n);
+    coinsEl.parentElement.classList.remove('bump');
+    coinsEl.parentElement.offsetWidth;
+    coinsEl.parentElement.classList.add('bump');
+  }
 
   function setPower(name) {
     activePower = activePower === name ? null : name;
@@ -518,11 +533,8 @@
       ]);
     }
     if (reward) {
-      setCoins(coins + reward);
+      payCoins(reward);
       bonusCoins.textContent = 0;
-      coinsEl.parentElement.classList.remove('bump');
-      coinsEl.parentElement.offsetWidth;
-      coinsEl.parentElement.classList.add('bump');
     }
     renderStats();
     await wait(900);
